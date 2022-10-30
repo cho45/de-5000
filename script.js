@@ -3,12 +3,15 @@ class DE5000LCD {
 	constructor(svg, opts) {
 		this.svg = svg;
 		this.primaryDisplayStatus = 'normal';
+		this.secondaryDisplayStatus = 'normal';
 
 		console.log({svg});
 		svg.style.width = "100%";
 		svg.style.height = "auto";
 		svg.style.padding = "10px";
 		svg.style.background = "#7d8b5a";
+		svg.style.borderRadius = "10px";
+		svg.style.boxShadow = "inset 0px 0px 6px -1px rgb(0 0 0 / 80%)";
 		svg.querySelectorAll('g[inkscape\\:label="digits"] > g').forEach((g) => {
 			g.style.stroke = svg.style.background;
 		});
@@ -43,6 +46,32 @@ class DE5000LCD {
 		this.segments.primary.digits = this._collectDigits('primary digits');
 
 		this.segments.secondary = {};
+		this.segments.secondary.quantity = {};
+		this.segments.secondary.quantity.theta = this.findByLabels('secondary quantity theta');
+		this.segments.secondary.quantity.Q = this.findByLabels('secondary quantity Q');
+		this.segments.secondary.quantity.D = this.findByLabels('secondary quantity D');
+		this.segments.secondary.quantity.RP = this.findByLabels('secondary quantity RP');
+		this.segments.secondary.quantity.ESR = this.findByLabels('secondary quantity ESR');
+
+		this.segments.secondary.unit = {};
+
+		this.segments.secondary.unit.degree = this.findByLabels('secondary unit degree');
+		this.segments.secondary.unit.percent = this.findByLabels('secondary unit percent');
+
+		this.segments.secondary.unit.ohm = this.findByLabels('secondary unit ohmunit ohm');
+		this.segments.secondary.unit.ohm_kilo = this.findByLabels('secondary unit ohmunit kilo');
+		this.segments.secondary.unit.ohm_mega = this.findByLabels('secondary unit ohmunit mega');
+
+		this.segments.secondary.unit.farad = this.findByLabels('secondary unit faradunit F');
+		this.segments.secondary.unit.farad_pico = this.findByLabels('secondary unit faradunit p');
+		this.segments.secondary.unit.farad_nano = this.findByLabels('secondary unit faradunit nano');
+		this.segments.secondary.unit.farad_micro = this.findByLabels('secondary unit faradunit micro');
+		this.segments.secondary.unit.farad_milli = this.findByLabels('secondary unit faradunit milli');
+
+		this.segments.secondary.unit.henry = this.findByLabels('secondary unit henryunit H');
+		this.segments.secondary.unit.henry_nano = this.findByLabels('secondary unit henryunit nano');
+		this.segments.secondary.unit.henry_milli = this.findByLabels('secondary unit henryunit milli');
+		this.segments.secondary.unit.henry_micro = this.findByLabels('secondary unit henryunit micro');
 		this.segments.secondary.digits = this._collectDigits('secondary digits');
 
 		this.segments.testFrequency = {};
@@ -67,7 +96,6 @@ class DE5000LCD {
 
 		this.findByLabels('state tolerance').style.visibility = 'hidden';
 		this.segments.state.APO.style.visibility = 'hidden';
-		this.findByLabels('secondary').style.visibility = 'hidden';
 	}
 
 	setHoldState (state) {
@@ -235,6 +263,139 @@ class DE5000LCD {
 		}
 	}
 
+	setSecondaryDigit (v, multiplier) {
+		if (this.secondaryDisplayStatus !== 'normal') {
+			return;
+		}
+		const chars = v.toFixed(-multiplier).split('');
+		while (chars.length < 5) chars.unshift('');
+		const digits = [
+			this.segments.secondary.digits[4],
+			this.segments.secondary.digits[3],
+			this.segments.secondary.digits[2],
+			this.segments.secondary.digits[1]
+		];
+		let p = 0;
+		for (let c of chars) {
+			if (c === '.') {
+				digits[p-1].dot.style.visibility = 'visible';
+			} else {
+				this._hideAll(digits[p]);
+				for (let s of this._encodeDigit(c)) {
+					if (!digits[p][s]) continue;
+					digits[p][s].style.visibility = 'visible';
+				}
+				p++;
+			}
+
+			if (p >= 4) break;
+		}
+	}
+
+	setSecondaryDisplay (v) {
+		this.secondaryDisplayStatus = v;
+		if (this.secondaryDisplayStatus === 'normal') {
+			return;
+		}
+		const digits = [
+			this.segments.secondary.digits[4],
+			this.segments.secondary.digits[3],
+			this.segments.secondary.digits[2],
+			this.segments.secondary.digits[1]
+		];
+
+		for (let d of digits) {
+			this._hideAll(d);
+		}
+
+		switch (v) {
+			case 'blank':
+				break;
+			case 'lines':
+				for (let s of this._encodeDigit('-')) {
+					for (let d of digits) {
+						if (!d[s]) continue;
+						d[s].style.visibility = 'visible';
+					}
+				}
+				break;
+			case 'OL': // outside limits
+				for (let s of this._encodeDigit('O')) {
+					digits[1][s].style.visibility = 'visible';
+				}
+				for (let s of this._encodeDigit('L')) {
+					digits[2][s].style.visibility = 'visible';
+				}
+				digits[2]['dot'].style.visibility = 'visible';
+				break;
+			case 'PASS':
+			case 'FAIL':
+			case 'OPEn':
+			case 'Srt':
+				// TODO
+				break;
+		}
+	}
+
+	setSecondaryQuantity (v) {
+		this._hideAll(this.segments.secondary.quantity);
+		if (v === 'none') return;
+		this.segments.secondary.quantity[v].style.visibility = 'visible';
+	}
+
+	setSecondaryUnit (v) {
+		this._hideAll(this.segments.secondary.unit);
+		switch (v) {
+			case "degree":
+				this.segments.secondary.unit.degree.style.visibility = 'visible';
+				break;
+			case "Ohm":
+				this.segments.secondary.unit.ohm.style.visibility = 'visible';
+				break;
+			case "kOhm":
+				this.segments.secondary.unit.ohm.style.visibility = 'visible';
+				this.segments.secondary.unit.ohm_kilo.style.visibility = 'visible';
+				break;
+			case "MOhm":
+				this.segments.secondary.unit.ohm.style.visibility = 'visible';
+				this.segments.secondary.unit.ohm_mega.style.visibility = 'visible';
+				break;
+			case "?":
+				break;
+			case "uH":
+				this.segments.secondary.unit.henry.style.visibility = 'visible';
+				this.segments.secondary.unit.henry_micro.style.visibility = 'visible';
+				break;
+			case "mH":
+				this.segments.secondary.unit.henry.style.visibility = 'visible';
+				this.segments.secondary.unit.henry_milli.style.visibility = 'visible';
+				break;
+			case "H":
+				this.segments.secondary.unit.henry.style.visibility = 'visible';
+				break;
+			case "kH":
+				this.segments.secondary.unit.henry.style.visibility = 'visible';
+				this.segments.secondary.unit.ohm_kilo.style.visibility = 'visible';
+				break;
+			case "pF":
+				this.segments.secondary.unit.farad.style.visibility = 'visible';
+				this.segments.secondary.unit.farad_pico.style.visibility = 'visible';
+				break;
+			case "nF":
+				this.segments.secondary.unit.farad.style.visibility = 'visible';
+				this.segments.secondary.unit.farad_nano.style.visibility = 'visible';
+				break;
+			case "uF":
+				this.segments.secondary.unit.farad.style.visibility = 'visible';
+				this.segments.secondary.unit.farad_micro.style.visibility = 'visible';
+				break;
+			case "mF":
+				this.segments.secondary.unit.farad.style.visibility = 'visible';
+				this.segments.secondary.unit.farad_milli.style.visibility = 'visible';
+				break;
+		}
+	}
+
 	setTestFrequency (v) {
 		this._hideAll(this.segments.testFrequency);
 		switch (v) {
@@ -343,7 +504,7 @@ function DE5000DecoderStream() {
 		const secondaryMeasurementLSB = packet[0x0C];
 		const secondaryMeasurementInfoMultiplier = packet[0x0D] & 0x07; 
 		const secondaryMeasurementInfoUnit = ["", "Ohm", "kOhm", "MOhm", "?", "uH", "mH", "H", "kH", "pF", "nF", "uF", "mF", "%", "degree"][packet[0x0D] >> 3];
-		const secondaryMeasurementDisplayStatus = ["normal", "blank", "lines", "OL", "PASS", "FAIL", "OPEn", "Srt"][packet[0x09] & 0x07];
+		const secondaryMeasurementDisplayStatus = ["normal", "blank", "lines", "OL", "PASS", "FAIL", "OPEn", "Srt"][packet[0x0E] & 0x07];
 
 		let secondaryMeasurementValue = (secondaryMeasurementMSB * 0x100 + secondaryMeasurementLSB);
 		if (secondaryMeasurementInfoUnit === '%' || secondaryMeasurementInfoUnit === 'degree') {
@@ -424,7 +585,7 @@ new Vue({
 				},
 				"secondary": {
 					"quantity": "theta",
-					"value": 1671193.5,
+					"value": 13.5,
 					"multiplier": -1,
 					"unit": "degree",
 					"display": "normal"
@@ -512,6 +673,15 @@ new Vue({
 			}
 			this.lcd.setPrimaryDigit(v.primary.value, v.primary.multiplier);
 			this.lcd.setPrimaryUnit(v.primary.unit);
+
+			this.lcd.setSecondaryDisplay(v.secondary.display);
+			if (v.secondary.quantity === 'ESR/RP') {
+				this.lcd.setSecondaryQuantity(v.flags.parallel ? 'RP' : 'ESR');
+			} else {
+				this.lcd.setSecondaryQuantity(v.secondary.quantity);
+			}
+			this.lcd.setSecondaryDigit(v.secondary.value, v.secondary.multiplier);
+			this.lcd.setSecondaryUnit(v.secondary.unit);
 		},
 
 		primaryQuantityOf: function (v) {

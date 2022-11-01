@@ -9,6 +9,7 @@
 
 		<script src="https://cdn.jsdelivr.net/npm/vue@2.x/dist/vue.js" defer></script>
 		<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js" defer></script>
+		<script src="./range.js" defer></script>
 		<script src="./script.js" defer></script>
 		<style>
 			div.tooltip {
@@ -71,6 +72,10 @@
 													{{ item.primary.unit }}
 												</td>
 												<td>
+													{{ item.primary.range.range }}
+													{{ item.primary.range.resolution }}
+												</td>
+												<td>
 													{{ item.secondary.display }}
 												</td>
 												<td>
@@ -79,6 +84,10 @@
 												<td>
 													{{ item.secondary.value.toFixed(3) }}
 													{{ item.secondary.unit }}
+												</td>
+												<td>
+													{{ item.secondary.range.range }}
+													{{ item.secondary.range.resolution }}
 												</td>
 											</tr>
 										</tbody>

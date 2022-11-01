@@ -126,11 +126,11 @@ class DE5000LCD {
 		this.segments.state.LCR.style.visibility = state ? 'visible' : 'hidden';
 	}
 
-	setPrimaryDigit (v, multiplier) {
+	setPrimaryDigit (v, range, multiplier) {
 		if (this.primaryDisplayStatus !== 'normal') {
 			return;
 		}
-		const chars = v.toFixed(-multiplier).split('');
+		const chars = v.toFixed(range.dot !== undefined ? (5 - range.dot) : -multiplier).split('');
 		while (chars.length < 5) chars.unshift('');
 		const digits = [
 			this.segments.primary.digits[5],
@@ -263,11 +263,12 @@ class DE5000LCD {
 		}
 	}
 
-	setSecondaryDigit (v, multiplier) {
+	setSecondaryDigit (v, range, multiplier) {
 		if (this.secondaryDisplayStatus !== 'normal') {
 			return;
 		}
-		const chars = v.toFixed(-multiplier).split('');
+		const chars = v.toFixed(range.dot !== undefined ? (4 - range.dot) : -multiplier).split('');
+		console.log(v, chars);
 		while (chars.length < 5) chars.unshift('');
 		const digits = [
 			this.segments.secondary.digits[4],
@@ -575,33 +576,45 @@ new Vue({
 	vuetify: new Vuetify(),
 	data: {
 		history: [
-			{
-				"primary": {
-					"quantity": "R",
-					"value": 0.5,
-					"multiplier": -1,
-					"unit": "MOhm",
-					"display": "normal"
-				},
-				"secondary": {
-					"quantity": "theta",
-					"value": 13.5,
-					"multiplier": -1,
-					"unit": "degree",
-					"display": "normal"
-				},
-				"flags": {
-					"holdEnabled": false,
-					"referenceValue": false,
-					"deltaMode": false,
-					"calibrationMode": false,
-					"sortingMode": false,
-					"LCRAutoMode": true,
-					"autoRangeMode": true,
-					"parallel": true
-				},
-				"testFrequency": "1 kHz"
-			}
+
+{
+    "primary": {
+        "quantity": "R",
+        "value": 0.005,
+        "multiplier": -3,
+        "unit": "Ohm",
+        "display": "normal",
+        "range": {
+            "range": "20.000Ohm",
+            "resolution": "0.001Ohm",
+            "freq100or120": "-",
+            "freq1k": "1.0%+3*",
+            "freq10k": "1.0%+3*",
+            "freq100k": "2.0%+3*",
+            "dot": 2,
+            "unit": "Ohm"
+        }
+    },
+    "secondary": {
+        "quantity": "theta",
+        "value": -1.2000000000000002,
+        "multiplier": -1,
+        "unit": "degree",
+        "display": "normal",
+        "range": {}
+    },
+    "flags": {
+        "holdEnabled": false,
+        "referenceValue": false,
+        "deltaMode": false,
+        "calibrationMode": false,
+        "sortingMode": false,
+        "LCRAutoMode": true,
+        "autoRangeMode": true,
+        "parallel": false
+    },
+    "testFrequency": "1 kHz"
+}
 		]
 	},
 
@@ -640,6 +653,8 @@ new Vue({
 					break;
 				}
 
+				value.primary.range = this.getRangeOf(value.primary.quantity, value.primary.unit, value.primary.value, value.testFrequency) || {};
+				value.secondary.range = this.getRangeOf(value.secondary.quantity, value.secondary.unit, value.secondary.value, value.testFrequency) || {};
 				console.log(value);
 				this.setLcd(value);
 				this.history.unshift(value);
@@ -671,7 +686,7 @@ new Vue({
 			} else {
 				this.lcd.setPrimaryQuantity(v.primary.quantity + (v.flags.parallel ? "p" : "s"));
 			}
-			this.lcd.setPrimaryDigit(v.primary.value, v.primary.multiplier);
+			this.lcd.setPrimaryDigit(v.primary.value, v.primary.range, v.primary.multiplier);
 			this.lcd.setPrimaryUnit(v.primary.unit);
 
 			this.lcd.setSecondaryDisplay(v.secondary.display);
@@ -680,8 +695,26 @@ new Vue({
 			} else {
 				this.lcd.setSecondaryQuantity(v.secondary.quantity);
 			}
-			this.lcd.setSecondaryDigit(v.secondary.value, v.secondary.multiplier);
+			this.lcd.setSecondaryDigit(v.secondary.value, v.secondary.range, v.secondary.multiplier);
 			this.lcd.setSecondaryUnit(v.secondary.unit);
+		},
+
+		getRangeOf: function (quantity, unit, digit, freq) {
+			if (quantity === 'ESR/RP') {
+				quantity = 'R';
+			}
+			if (!DE5000Ranges.hasOwnProperty(quantity)) {
+				return null;
+			}
+			for (let r of DE5000Ranges[quantity].filter((r) => r.freq(freq) !== '-')) {
+				if (r.unit === unit) {
+					const count = 2 * Math.pow(10, r.dot - 1);
+					if (digit < count) {
+						return r;
+					}
+				}
+			}
+			return null;
 		},
 
 		primaryQuantityOf: function (v) {

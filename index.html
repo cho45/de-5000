@@ -68,12 +68,16 @@
 													{{ primaryQuantityOf(item) }}
 												</td>
 												<td>
-													{{ item.primary.value.toFixed(4) }}
-													{{ item.primary.unit }}
+													{{ formatValue(item.primary) }}
 												</td>
 												<td>
-													{{ item.primary.range.range }}
-													{{ item.primary.range.resolution }}
+													<span v-if="item.primary.range && item.primary.range.accuracy">
+														±
+														{{ item.primary.range.accuracy(item.testFrequency) }}
+													</span>
+													<span v-else>
+														-
+													</span>
 												</td>
 												<td>
 													{{ item.secondary.display }}
@@ -82,12 +86,10 @@
 													{{ item.secondary.quantity }}
 												</td>
 												<td>
-													{{ item.secondary.value.toFixed(3) }}
-													{{ item.secondary.unit }}
+													{{ formatValue(item.secondary) }}
 												</td>
 												<td>
-													{{ item.secondary.range.range }}
-													{{ item.secondary.range.resolution }}
+													{{ formatUnit(item.secondary.range.resolution) }}
 												</td>
 											</tr>
 										</tbody>

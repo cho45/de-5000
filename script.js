@@ -576,45 +576,35 @@ new Vue({
 	vuetify: new Vuetify(),
 	data: {
 		history: [
-
-{
-    "primary": {
-        "quantity": "R",
-        "value": 0.005,
-        "multiplier": -3,
-        "unit": "Ohm",
-        "display": "normal",
-        "range": {
-            "range": "20.000Ohm",
-            "resolution": "0.001Ohm",
-            "freq100or120": "-",
-            "freq1k": "1.0%+3*",
-            "freq10k": "1.0%+3*",
-            "freq100k": "2.0%+3*",
-            "dot": 2,
-            "unit": "Ohm"
-        }
-    },
-    "secondary": {
-        "quantity": "theta",
-        "value": -1.2000000000000002,
-        "multiplier": -1,
-        "unit": "degree",
-        "display": "normal",
-        "range": {}
-    },
-    "flags": {
-        "holdEnabled": false,
-        "referenceValue": false,
-        "deltaMode": false,
-        "calibrationMode": false,
-        "sortingMode": false,
-        "LCRAutoMode": true,
-        "autoRangeMode": true,
-        "parallel": false
-    },
-    "testFrequency": "1 kHz"
-}
+			{
+				"primary": {
+					"quantity": "R",
+					"value": 0.005,
+					"multiplier": -3,
+					"unit": "Ohm",
+					"display": "normal",
+					"range": new DE5000Range( "20.000Ohm", "0.001Ohm", "-", "1.0%+3*", "1.0%+3*", "2.0%+3*" )
+				},
+				"secondary": {
+					"quantity": "theta",
+					"value": -1.2000000000000002,
+					"multiplier": -1,
+					"unit": "degree",
+					"display": "normal",
+					"range": {}
+				},
+				"flags": {
+					"holdEnabled": false,
+					"referenceValue": false,
+					"deltaMode": false,
+					"calibrationMode": false,
+					"sortingMode": false,
+					"LCRAutoMode": true,
+					"autoRangeMode": true,
+					"parallel": false
+				},
+				"testFrequency": "1 kHz"
+			}
 		]
 	},
 
@@ -624,7 +614,8 @@ new Vue({
 	mounted: async function () {
 		const res = await fetch('./de-5000.svg');
 		const root = this.$refs.lcd;
-		root.innerHTML = await res.text();
+		root.innerHTML = (await res.text()).
+			replace(/<\?[^>]+>/, ''); // remove xml processing instruction
 		const svg = root.querySelector('svg');
 		this.lcd = new DE5000LCD(svg);
 		setTimeout(() => {
@@ -706,7 +697,7 @@ new Vue({
 			if (!DE5000Ranges.hasOwnProperty(quantity)) {
 				return null;
 			}
-			for (let r of DE5000Ranges[quantity].filter((r) => r.freq(freq) !== '-')) {
+			for (let r of DE5000Ranges[quantity].filter((r) => r.accuracy(freq) !== '-')) {
 				if (r.unit === unit) {
 					const count = 2 * Math.pow(10, r.dot - 1);
 					if (digit < count) {
@@ -725,6 +716,20 @@ new Vue({
 				case "DCR": return "DCR";
 				default : return "";
 			}
+		},
+
+		formatValue: function (v) {
+			const range = v.range;
+			const multiplier = v.multiplier;
+			const unit = v.unit;
+			return v.value.toFixed(range.dot !== undefined ? (5 - range.dot) : -multiplier) + this.formatUnit(unit);
+		},
+
+		formatUnit: function (unit) {
+			if (!unit) return '';
+			return unit.
+				replace(/\s*Ohm/, ' \u03a9').
+				replace(/\s*degree/, ' \u00b0');
 		}
 	}
 });

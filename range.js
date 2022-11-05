@@ -24,7 +24,7 @@ class DE5000Range {
 		this.unit = r[3];
 	}
 
-	freq (f) {
+	accuracy (f) {
 		switch (f) {
 			case "100 Hz":
 			case "120 Hz":
